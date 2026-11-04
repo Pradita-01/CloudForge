@@ -22,10 +22,10 @@ pipeline {
             }
         }
 
-        stage('Check Gitleaks') {
+        stage('Secret Scan') {
             steps {
                 bat '''
-                    "C:\\Users\\pradi\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe\\gitleaks.exe" version
+                    "C:\\Users\\pradi\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe\\gitleaks.exe" git . --redact --verbose
                 '''
             }
         }
@@ -39,7 +39,7 @@ pipeline {
 
     post {
         success {
-            echo 'CloudForge build and tests passed!'
+            echo 'CloudForge secret scan, build and tests passed!'
         }
 
         failure {
