@@ -22,6 +22,14 @@ pipeline {
             }
         }
 
+        stage('Check Gitleaks') {
+            steps {
+                bat '''
+                    "C:\\Users\\pradi\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe\\gitleaks.exe" version
+                '''
+            }
+        }
+
         stage('Build and Test') {
             steps {
                 bat 'mvn --batch-mode clean verify'
