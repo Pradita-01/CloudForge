@@ -21,6 +21,13 @@ pipeline {
                 bat 'mvn -version'
             }
         }
+        stage('Check Docker') {
+             steps {
+                bat 'where docker'
+                bat 'docker version'
+                bat 'docker info'
+            }
+        }
 
         stage('Secret Scan') {
             steps {
