@@ -1,17 +1,44 @@
+
 ---
-- name: Install a single-node K3s Kubernetes cluster for the CIA 2 demo
+- name: Configure K3s Kubernetes on CloudForge Azure VM
   hosts: kubernetes
   become: true
+
   tasks:
-    - name: Install K3s
-      ansible.builtin.shell: curl -sfL https://get.k3s.io | sh -
+
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required system packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - ca-certificates
+        state: present
+
+    - name: Install K3s if not already installed
+      ansible.builtin.shell: |
+        curl -sfL https://get.k3s.io | sh -
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Wait for K3s node to become ready
-      ansible.builtin.command: /usr/local/bin/kubectl get nodes
+    - name: Ensure K3s service is enabled and running
+      ansible.builtin.systemd:
+        name: k3s
+        enabled: true
+        state: started
+
+    - name: Wait for Kubernetes API server
+      ansible.builtin.command:
+        cmd: /usr/local/bin/kubectl get nodes
       register: k3s_nodes
       changed_when: false
       retries: 12
       delay: 10
       until: k3s_nodes.rc == 0
+
+    - name: Display Kubernetes node information
+      ansible.builtin.debug:
+        var: k3s_nodes.stdout_lines
