@@ -21,11 +21,12 @@ pipeline {
                 bat 'mvn -version'
             }
         }
+
         stage('Check Docker') {
-             steps {
-                bat 'where docker'
-                bat 'docker version'
-                bat 'docker info'
+            steps {
+                bat '''
+                    "C:\\Users\\pradi\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" version
+                '''
             }
         }
 
