@@ -43,11 +43,19 @@ pipeline {
                 bat 'mvn --batch-mode clean verify'
             }
         }
+
+        stage('Docker Build') {
+            steps {
+                bat '''
+                    "C:\\Users\\pradi\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" build -t cloudforge:%BUILD_NUMBER% .
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'CloudForge secret scan, build and tests passed!'
+            echo 'CloudForge secret scan, build, tests and Docker image creation passed!'
         }
 
         failure {
