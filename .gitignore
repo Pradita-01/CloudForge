@@ -6,3 +6,9 @@ target/
 .env.*
 *.log
 .DS_Store
+
+# Local Ansible inventory
+ansible/inventory.ini
+
+# Local Ansible inventory
+ansible/inventory.ini
