@@ -20,7 +20,7 @@ public class StatusController {
             "status", "running",
             "version", appVersion,
             "deploymentMessage",
-            "Version 2 - Automatically deployed by Azure Pipelines!"
+            ""Version 3 - Automatically triggered from GitHub!""
         );
     }
 
