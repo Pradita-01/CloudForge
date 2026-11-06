@@ -20,7 +20,7 @@ public class StatusController {
             "status", "running",
             "version", appVersion,
             "deploymentMessage",
-            ""Version 3 - Automatically triggered from GitHub!""
+            "Version 3 - Automatically triggered from GitHub!"
         );
     }
 
