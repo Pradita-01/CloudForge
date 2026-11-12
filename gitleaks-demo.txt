@@ -1,0 +1,19 @@
+
+# CloudForge - Gitleaks Secret Detection Demo
+# ALL VALUES BELOW ARE FAKE TEST CREDENTIALS.
+
+# AWS-style access key
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+
+# GitHub personal access token pattern
+GITHUB_TOKEN=ghp_0123456789abcdef0123456789abcdef0123
+
+# Generic API key
+api_key = "AIzaSyD-FAKE-TEST-KEY-0123456789"
+
+# Database credentials
+DB_USERNAME=admin
+DB_PASSWORD="CloudForge_Demo_Password_12345!"
+
+# Generic client secret
+client_secret="cloudforge-demo-secret-123456789abcdef"
