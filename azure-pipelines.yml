@@ -23,6 +23,10 @@ variables:
   GHCR_IMAGE: ghcr.io/pradita-01/cloudforge
   GHCR_USER: Pradita-01
 
+  # Keep Kubernetes deployment disabled during SonarQube validation.
+  # Change to true only when you are ready to start the Azure VM.
+  ENABLE_K8S_DEPLOYMENT: 'false'
+
 steps:
 
 # 1. Checkout source code
@@ -55,9 +59,10 @@ steps:
       detect --source=/repo --redact --verbose --exit-code 1
   displayName: 'Gitleaks secret scanning'
 
-# 5. Prepare SonarQube Cloud analysis
+# 5. Prepare SonarQube Cloud analysis ONLY on main
 - task: SonarCloudPrepare@4
   displayName: 'Prepare SonarQube Cloud analysis'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   inputs:
     SonarCloud: 'CloudForge-SonarQube-Connection'
     organization: 'pradita-01'
@@ -65,9 +70,10 @@ steps:
     extraProperties: |
       sonar.projectKey=Pradita-01_CloudForge
 
-# 6. Maven build, tests and SonarQube analysis
+# 6A. Maven build, tests and SonarQube analysis on main
 - task: Maven@4
   displayName: 'Maven build, tests and SonarQube analysis'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   inputs:
     mavenPomFile: 'pom.xml'
     goals: 'clean verify'
@@ -81,9 +87,26 @@ steps:
     sonarQubeRunAnalysis: true
     sqMavenPluginVersionChoice: 'latest'
 
-# 7. Publish SonarQube Quality Gate result
+# 6B. Ordinary Maven build and tests on feature branches and PRs
+- task: Maven@4
+  displayName: 'Maven build and unit tests (without SonarQube)'
+  condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean verify'
+    options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+    publishJUnitResults: false
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.21'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    sonarQubeRunAnalysis: false
+
+# 7. Publish SonarQube Quality Gate ONLY on main
 - task: SonarCloudPublish@4
   displayName: 'Publish SonarQube Quality Gate'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   inputs:
     pollingTimeoutSec: '300'
 
@@ -119,7 +142,7 @@ steps:
     docker images $(DOCKER_IMAGE)
   displayName: 'Validate Docker image'
 
-# 12. Push image to GitHub Container Registry
+# 12. Push image to GHCR (main only)
 - script: |
     echo "$GHCR_PAT" | docker login ghcr.io \
       -u "$(GHCR_USER)" --password-stdin
@@ -129,15 +152,15 @@ steps:
 
     docker push $(GHCR_IMAGE):$(Build.SourceVersion)
     docker push $(GHCR_IMAGE):latest
-  displayName: 'Push Docker image to GHCR'
+  displayName: 'Push Docker image to GitHub Container Registry'
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   env:
     GHCR_PAT: $(GHCR_PAT)
 
-# 13. Deploy image to Azure VM Kubernetes cluster
+# 13. Deploy to Kubernetes ONLY when explicitly enabled
 - task: SSH@0
   displayName: 'Deploy CloudForge to Kubernetes'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['ENABLE_K8S_DEPLOYMENT'], 'true'))
   inputs:
     sshEndpoint: 'CloudForge-VM-SSH'
     runOptions: 'commands'
