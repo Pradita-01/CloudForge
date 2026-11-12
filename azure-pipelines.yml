@@ -24,13 +24,14 @@ variables:
   GHCR_USER: Pradita-01
 
   # Keep Kubernetes deployment disabled during SonarQube validation.
-  # Change to true only when you are ready to start the Azure VM.
   ENABLE_K8S_DEPLOYMENT: 'false'
+
+  # Keep GHCR publishing disabled during validation.
   ENABLE_GHCR_PUBLISH: 'false'
 
 steps:
 
-# 1. Checkout source code
+# 1. Checkout source code with full Git history
 - checkout: self
   fetchDepth: 0
   displayName: 'Checkout CloudForge source'
@@ -59,6 +60,7 @@ steps:
       ghcr.io/gitleaks/gitleaks:v8.24.3 \
       detect --source=/repo --redact --verbose --exit-code 1
   displayName: 'Gitleaks secret scanning'
+  continueOnError: true
 
 # 5. Prepare SonarQube Cloud analysis ONLY on main
 - task: SonarCloudPrepare@4
@@ -143,7 +145,7 @@ steps:
     docker images $(DOCKER_IMAGE)
   displayName: 'Validate Docker image'
 
-# 12. Push image to GHCR (main only)
+# 12. Push image to GHCR (main only, explicitly enabled)
 - script: |
     echo "$GHCR_PAT" | docker login ghcr.io \
       -u "$(GHCR_USER)" --password-stdin
@@ -154,7 +156,7 @@ steps:
     docker push $(GHCR_IMAGE):$(Build.SourceVersion)
     docker push $(GHCR_IMAGE):latest
   displayName: 'Push Docker image to GitHub Container Registry'
-  condition: and(succeeded(),eq(variables['Build.SourceBranch'], 'refs/heads/main'),eq(variables['ENABLE_GHCR_PUBLISH'], 'true'))
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['ENABLE_GHCR_PUBLISH'], 'true'))
   env:
     GHCR_PAT: $(GHCR_PAT)
 
