@@ -1,10 +1,12 @@
 
 # CloudForge - Azure DevOps CI/CD Pipeline
+# Integrated with Gitleaks and SonarQube Cloud
 
 trigger:
   branches:
     include:
       - main
+      - feature/sonarqube-integration
 
 pr:
   branches:
@@ -20,6 +22,11 @@ variables:
   DOCKER_IMAGE: cloudforge:$(Build.BuildId)
   GHCR_IMAGE: ghcr.io/pradita-01/cloudforge
   GHCR_USER: Pradita-01
+
+  # Keep Kubernetes deployment disabled during SonarQube validation.
+  # Change to true only when you are ready to start the Azure VM.
+  ENABLE_K8S_DEPLOYMENT: 'false'
+  ENABLE_GHCR_PUBLISH: 'false'
 
 steps:
 
@@ -53,14 +60,58 @@ steps:
       detect --source=/repo --redact --verbose --exit-code 1
   displayName: 'Gitleaks secret scanning'
 
-# 5. Maven build and tests
-- script: |
-    mvn --batch-mode --no-transfer-progress clean verify
-  displayName: 'Maven build and unit tests'
-  env:
-    MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+# 5. Prepare SonarQube Cloud analysis ONLY on main
+- task: SonarCloudPrepare@4
+  displayName: 'Prepare SonarQube Cloud analysis'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    SonarCloud: 'CloudForge-SonarQube-Connection'
+    organization: 'pradita-01'
+    scannerMode: 'other'
+    extraProperties: |
+      sonar.projectKey=Pradita-01_CloudForge
 
-# 6. Publish JUnit results
+# 6A. Maven build, tests and SonarQube analysis on main
+- task: Maven@4
+  displayName: 'Maven build, tests and SonarQube analysis'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean verify'
+    options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+    publishJUnitResults: false
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.21'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    sonarQubeRunAnalysis: true
+    sqMavenPluginVersionChoice: 'latest'
+
+# 6B. Ordinary Maven build and tests on feature branches and PRs
+- task: Maven@4
+  displayName: 'Maven build and unit tests (without SonarQube)'
+  condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean verify'
+    options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+    publishJUnitResults: false
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.21'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    sonarQubeRunAnalysis: false
+
+# 7. Publish SonarQube Quality Gate ONLY on main
+- task: SonarCloudPublish@4
+  displayName: 'Publish SonarQube Quality Gate'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    pollingTimeoutSec: '300'
+
+# 8. Publish JUnit results
 - task: PublishTestResults@2
   displayName: 'Publish JUnit test results'
   condition: succeededOrFailed()
@@ -72,7 +123,7 @@ steps:
     failTaskOnFailedTests: true
     testRunTitle: 'CloudForge Maven Tests'
 
-# 7. Publish Maven test reports
+# 9. Publish Maven test reports
 - task: PublishPipelineArtifact@1
   displayName: 'Publish Maven test reports'
   condition: succeededOrFailed()
@@ -81,19 +132,18 @@ steps:
     artifact: 'maven-test-reports'
     publishLocation: 'pipeline'
 
-# 8. Build Docker image
+# 10. Build Docker image
 - script: |
     docker build -t $(DOCKER_IMAGE) .
   displayName: 'Build CloudForge Docker image'
 
-# 9. Validate Docker image
+# 11. Validate Docker image
 - script: |
     docker image inspect $(DOCKER_IMAGE)
     docker images $(DOCKER_IMAGE)
   displayName: 'Validate Docker image'
 
-# 10. Push image to GitHub Container Registry
-# Only publish from main branch, never from pull requests.
+# 12. Push image to GHCR (main only)
 - script: |
     echo "$GHCR_PAT" | docker login ghcr.io \
       -u "$(GHCR_USER)" --password-stdin
@@ -103,15 +153,15 @@ steps:
 
     docker push $(GHCR_IMAGE):$(Build.SourceVersion)
     docker push $(GHCR_IMAGE):latest
-  displayName: 'Push Docker image to GHCR'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  displayName: 'Push Docker image to GitHub Container Registry'
+  condition: and(succeeded(),eq(variables['Build.SourceBranch'], 'refs/heads/main'),eq(variables['ENABLE_GHCR_PUBLISH'], 'true'))
   env:
     GHCR_PAT: $(GHCR_PAT)
 
-# 11. Deploy image to Azure VM Kubernetes cluster
+# 13. Deploy to Kubernetes ONLY when explicitly enabled
 - task: SSH@0
   displayName: 'Deploy CloudForge to Kubernetes'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['ENABLE_K8S_DEPLOYMENT'], 'true'))
   inputs:
     sshEndpoint: 'CloudForge-VM-SSH'
     runOptions: 'commands'
