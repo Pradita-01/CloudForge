@@ -26,6 +26,7 @@ variables:
   # Keep Kubernetes deployment disabled during SonarQube validation.
   # Change to true only when you are ready to start the Azure VM.
   ENABLE_K8S_DEPLOYMENT: 'false'
+  ENABLE_GHCR_PUBLISH: 'false'
 
 steps:
 
@@ -153,7 +154,7 @@ steps:
     docker push $(GHCR_IMAGE):$(Build.SourceVersion)
     docker push $(GHCR_IMAGE):latest
   displayName: 'Push Docker image to GitHub Container Registry'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  condition: and(succeeded(),eq(variables['Build.SourceBranch'], 'refs/heads/main'),eq(variables['ENABLE_GHCR_PUBLISH'], 'true'))
   env:
     GHCR_PAT: $(GHCR_PAT)
 
