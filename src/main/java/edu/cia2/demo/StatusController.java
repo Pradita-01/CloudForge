@@ -13,14 +13,19 @@ public class StatusController {
     @Value("${app.version:local}")
     private String appVersion;
 
+    // DEMO ONLY: Intentionally hardcoded fake credential for SonarQube analysis.
+    private static final String DEMO_API_KEY =
+            "DEMO_API_KEY_NOT_VALID_123456789";
+
     @GetMapping("/")
     public Map<String, String> home() {
         return Map.of(
-            "application", "CIA 2 Java CI/CD Demo",
-            "status", "running",
-            "version", appVersion,
-            "deploymentMessage",
-            "Version 3 - Automatically triggered from GitHub!"
+                "application", "CIA 2 Java CI/CD Demo",
+                "status", "running",
+                "version", appVersion,
+                "deploymentMessage",
+                "Version 3 - Automatically triggered from GitHub!",
+                "demoSecurityCheck", DEMO_API_KEY
         );
     }
 
