@@ -1,0 +1,2 @@
+# CloudForge Gitleaks demonstration
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
