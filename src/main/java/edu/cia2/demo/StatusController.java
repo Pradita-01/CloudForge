@@ -15,7 +15,7 @@ public class StatusController {
 
     // DEMO ONLY: Intentionally hardcoded fake credential for SonarQube analysis.
     private static final String DEMO_API_KEY =
-            "DEMO_API_KEY_NOT_VALID_123456789";
+            "CloudForge-Demo-Password-123!";
 
     @GetMapping("/")
     public Map<String, String> home() {
