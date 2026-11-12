@@ -1,3 +1,4 @@
+
 name: CIA 2 Java CI/CD
 
 on:
@@ -23,6 +24,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Scan repository for secrets
+        continue-on-error: true
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,6 +42,13 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
+
+      # DEMO ONLY: Fake credential for secret detection
+      - name: Demo - Exposed API credential
+        env:
+          API_TOKEN: "ghp_sd1ga8F3kP92mX7qL5vR1nT6wB4zY"
+        run: echo "Demonstrating hardcoded credential detection"
+
       - name: Compile, test, and package
         run: mvn --batch-mode clean verify
       - name: Upload test reports
