@@ -73,6 +73,7 @@ steps:
     extraProperties: |
       sonar.projectKey=Pradita-01_CloudForge
       sonar.maven.scanAll=true
+      sonar.text.inclusions=**/*.txt
 
 # 6A. Maven build, tests and SonarQube analysis on main
 - task: Maven@4
